@@ -1,5 +1,11 @@
-# etapa 1 - Otimizar os hiperparâmetros. 
+#Step 1 - Tuning hyperparameters - Searching for the best hyperparameters
+#Etapa 1  - Otimizar os hiperparâmetros - Procurando pelos melhores hiperparâmetros
 
+#Source(Fonte): https://towardsdatascience.com/decision-tree-hyperparameter-tuning-in-r-using-mlr-3248bfd2d88c 
+#Author: Ivo Bernardo. Jun, 22th, 2022. 
+
+#01-Loading packages
+#01-Carregar os pacotes 
 library(dplyr)
 library(rpart)
 library(rpart.plot)
@@ -8,7 +14,12 @@ library(mlr)
 library(ggplot2)
 library(plotly)
 
+#02-Loading the dataset
+#02-Carregando a base de dados
 load("iegm17a.RData")
+
+#03-Changing variables from characters into factors 
+#03-Transformando as variáveis (colunas) de caracteres para fatores)
 iegm17a <- iegm17a %>% 
   mutate(iEduc=as.factor(iEduc)) %>% 
   mutate(iSaude=as.factor(iSaude)) %>% 
@@ -20,87 +31,101 @@ iegm17a <- iegm17a %>%
   mutate(IEGeral=as.factor(IEGeral)) %>% 
   mutate(Parecer=as.factor(Parecer))
 
-indiceiegm <- c("A", "B+", "B", "C+", "C")
-indiceiegm1 <- factor(indiceiegm,
-                      levels = c("A",
-                                 "B+",
-                                 "B", 
-                                 "C+", 
-                                 "C"))
-julgamento <- c("Favoravel", "Desfavoravel")
-julgamento1 <- factor(julgamento,
-                      levels = c("Favoravel", 
-                                 "Desfavoravel"))
+#04-Checking the classes of the variables (columns)
+#04-Verificar as classes das variáveis (colunas) 
+class(iegm17a$iSaude)
+iegm17a %>% str
 
+#05-Setting the data in train and teste; 
+#05-Estabelecendo a base de dados em treino e teste
 set.seed(123)
 bool_treino <- stats::runif(dim(iegm17a)[1])>.25
 treino <- iegm17a[bool_treino,]
 treino
 length(treino)
 teste  <- iegm17a[!bool_treino,]
-iegm17a %>% str
 
+#06-Setting a tree withought any hyperparameters
+#06-Gerando uma árvore estabelecer hiperparâmetros
 d.tree = rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral, 
                data=treino, 
                method = 'class')
 
-
+#07-Predicting the results and Checking the accuracy of these predictions of the model 
+#07-Prevendo-se os resultados e Verificando a acurácia das predições do modelo 
 predicted_values <- predict(d.tree, teste, type = 'class')
 accuracy(teste$Parecer, predicted_values)
-d.tree.custom = rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral, 
-                      data=treino, 
-                      method = 'class'
-                       )
 
+#08-Exhibiting all the tuneable parameters 
+#08-Exibindo-se todos os parâmetros ajustáveis
 getParamSet("classif.rpart")
 
+#09-Setting the classification task with  makeclassiftask
+#09-estabelecendo a tarefa de classificação com o makeclassiftask
 d.tree.mlr <- mlr::makeClassifTask(data=as.data.frame(treino[,3:11]),  
                                    target="Parecer"
 )
 
-d.tree.params <- mlr::makeClassifTask(data=as.data.frame(treino[,3:11]),  
-                                      target="Parecer"
-)
-
+#10-Search Parameter for Max Depth - defining the grid of values of maxdepth
+#10-Procurando parâmetros para o maxdeph - definindo o grid de valores do maxdepth
 param_grid <- makeParamSet(makeDiscreteParam("maxdepth", values=1:30))
 
+#11-Defining a grid, cross validation and measureament (accuracy)
+#11-Definindo o grid, o número de iterações no cross validation e a medida (acurácia)
 control_grid = makeTuneControlGrid()
 resample = makeResampleDesc("CV", iters = 3L)
 measure = acc
 
+#12-Tuning the hyperparameters with tuneParams
+#12-Realizando a tunagem dos hyperparâmetros com o comando tuneParams
 set.seed(123)
 dt_tuneparam <- tuneParams(learner="classif.rpart", 
-                           task=d.tree.params, 
+                           task=d.tree.mlr, 
                            resampling = resample,
                            measures = measure,
                            par.set=param_grid, 
                            control=control_grid, 
                            show.info = TRUE)
 
+#13-Evaluating the results 
+#13-Medindo os resultados dessa tunagem
 result_hyperparam <- generateHyperParsEffectData(dt_tuneparam, partial.dep = TRUE)
 
+#14-Generating the previous graph with ggplot
+#14-Gerando o gráfico do comando anterior com o ggplot
 ggplot(
   data = result_hyperparam$data,
   aes(x = maxdepth, y=acc.test.mean)
 ) + geom_line(color = 'darkblue')
 
+#15-Exhibiting these results 
+#15-Exibindo estes resultados. 
 dt_tuneparam
 
+#16-Saving these best parameters in the dt_tuneparams$x object
+#16-Salvando estes melhores parametros no objeto dt_tuneparams$x
 best_parameters = setHyperPars(
   makeLearner("classif.rpart", predict.type = "prob"), 
   par.vals = dt_tuneparam$x
 )
 
+#17-Trainning the best model with the best_parameters (previous)
+#17-Treinando o melhor modelo com os melhores parâmetros (anteriores) 
 best_model = train(best_parameters, d.tree.mlr)
 
+#18-Evaluating that model with the test sample a new makeclassiftask has to be created
+#18-Para medir o modelo com a amostra de teste uma nova makeclassiftask precisa ser criada
 d.tree.mlr.test <- makeClassifTask(data=as.data.frame(teste[,3:11]),  
                                    target="Parecer",  
 )
 
+#19-Predicting the results and Checking the accuracy of these predictions of the model 
+#19- Prevendo-se os resultados e Verificando a acurácia das predições do modelo 
 results <- predict(best_model, task = d.tree.mlr.test)$data
-
 accuracy(results$truth, results$response)
 
+#20-Defining the grid of values of the multiple hyperparameters
+#20-Definindo o grid de valores dos multiplos hiperparâmetros
 param_grid_multi <- makeParamSet( 
   makeDiscreteParam("maxdepth", values=4:20),
   makeNumericParam("cp", lower = 0.001, upper = 0.01),
@@ -108,8 +133,9 @@ param_grid_multi <- makeParamSet(
   makeDiscreteParam("minbucket", values=1:10)
 )
 
+#21-Tuning multiples hyperparameters with tuneParams - Recommendable to use funcion "time" to record purposes
+#21-Realizando a tunagem dos multiplos hyperparâmetros com o comando tuneParams - recomendável usar a função "time" para registro
 start_time <- Sys.time()
-
 dt_tuneparam_multi <- tuneParams(learner='classif.rpart', 
                                  task=d.tree.mlr, 
                                  resampling = resample,
@@ -117,29 +143,30 @@ dt_tuneparam_multi <- tuneParams(learner='classif.rpart',
                                  par.set=param_grid_multi, 
                                  control=control_grid, 
                                  show.info = TRUE)
-
 end_time <- Sys.time()
-
 end_time - start_time
 
-
+#22-Extracting the results of this tunning
+#22-Extraindo os resultados dessa tunagem
 best_parameters_multi = setHyperPars(
   makeLearner("classif.rpart", predict.type = "prob"), 
   par.vals = dt_tuneparam_multi$x
 )
-
 best_model_multi = train(best_parameters_multi, d.tree.mlr)
 
+#23-Predicting the results and Checking the accuracy of these predictions of the model 
+#23-Prevendo-se os resultados e Verificando a acurácia das predições do modelo 
 results <- predict(best_model_multi, task = d.tree.mlr.test)$data
-
 accuracy(results$truth, results$response)
 
+#24-Extracting a sample of the grid obtained (200 interactions - x)
+#24-Extraindo uma amostra do grid obtido (200 iterações - x)_
 result_hyperparam.multi <- generateHyperParsEffectData(dt_tuneparam_multi, partial.dep = TRUE)
-
 result_sample <- result_hyperparam.multi$data %>%
   sample_n(200)
 
-
+#25-Plotting that extraction
+#25-Plotando esta extração
 hyperparam.plot <- plot_ly(result_sample, 
                            x = ~cp, 
                            y = ~maxdepth, 
@@ -149,8 +176,11 @@ hyperparam.plot <- hyperparam.plot %>% add_markers()
 hyperparam.plot
 
 ############################################################################################################################################ 
-#Etapa 2 - gerar a árvore
+#Step 2 - Generating the classification tree with the best hyperparameters tunned
+#Etapa 2 - Gerar a árvore de classificação com os hiperparâmetros ótimos tunados. 
 
+#01-Carrying the packages
+#01-Carregando os pacotes
 pacotes <- c('tidyverse',  # Pacote básico de datawrangling
              'rpart',      # Biblioteca de árvores
              'rpart.plot', # Conjunto com Rpart, plota a parvore
@@ -172,8 +202,10 @@ if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
 
 library('pROC')
 
+#02-Setting a tree withought any hyperparameters
+#02-Gerando uma árvore estabelecer hiperparâmetros
 set.seed(123)
-arvore <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral,
+tree_IEGM <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral,
                 data=iegm17a,
                 parms = list(split = 'gini'), # podemos trocar para  'information'
                 method='class', # Essa opção indica que a resposta é qualitativa,
@@ -181,22 +213,31 @@ arvore <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCid
                 control = rpart.control(cp = 0.01, 
                                         minsplit = 5,
                                         minbucket = 10, 
-                                        maxdepth = 6)
+                                        maxdepth = 5)
 )
-arvore
+#03-Exhibing the tree 
+#03-Exibindo a árvore
+tree_IEGM
 paleta = scales::viridis_pal(begin=.75, end=1)(20)
-rpart.plot::rpart.plot(arvore,
+rpart.plot::rpart.plot(tree_IEGM,
                        box.palette = paleta)
+
+#04-Predicting the results by the obtained tree
+#04-Prevendo-se os resultados com a árvore a árvore obtida
+p_treino = stats::predict(tree_IEGM, treino) 
+p_teste = stats::predict(tree_IEGM, teste)
+
+#05-Setting vectors to measure the accuracy (acctr), sensitivity (sensitr) and specificity (espectr) of train sample and 
+#the accuracy (acctes), sensitivity (sensites) and specificity (espectes) of the test sample of the various cutoffs. 
+#05-Estabelecendo-se vetores para medir a acurácia (acctr), sensitividade (sensitr) e especificidade (espectr) da amostra de treino 
+#e a acurácia (acctes), sensitividade (sensites), e especificidade (espectes) dos vários pontos de corte.   
+
 acctr <- 1:6
 sensitr <- 1:6
 espectr <-  1:6
 acctes <- 1:6
 sensites <- 1:6
 espectes <- 1:6
-
-p_treino = stats::predict(arvore, treino) 
-p_teste = stats::predict(arvore, teste)
-
 
 k <- c(3.9,4.1,6.2,7.3,8.4,9.9)
 for(i in seq_along(k)) {
@@ -214,6 +255,9 @@ for(i in seq_along(k)) {
   espectes[i] <- if (nrow(tabtes) < 2) { 0 } else {specificity(tabtes)} #especificidade de teste
   
 }
+
+#06-Creating a vector to organize the cutoffs
+#06-Criando-se um vetor para organizar a tabela de pontos de corte
 pontos_corte <- 1:6
 
 for(i in seq_along(k)) {
@@ -221,29 +265,42 @@ for(i in seq_along(k)) {
   Percentuais_de_Corte <- paste(pontos_corte,"%", sep="")
 }
 
+#07-Creating a dataset to organize the accuracy, sensitivivity and specificity of the train and test samples. 
+#07-Criando um dataset para organizar a acurácia, a sensitividade e a especificidade das amostras de treino e teste. 
 df <- data.frame(Percentuais_de_Corte, acctr, sensitr, espectr, acctes, sensites, espectes)
 df
 ###################################################################################################################################
-#Etapa 3- Curva Roc
+#Step 3 - Predicting and Classificating the data in "Approved" or "not Approved" e generating the ROC Curve 
+#Etapa 3- Predição e classificação dos dados em Parecer "Favorável" e "Desafavorável" e gerar a curva Roc
 
-p_treino = stats::predict(arvore, treino)
+#01-Predicting and classification the real data based on the tree obtained with the cutoffs chosen
+#01-Prevendo e classificando os dados reais em função da árvore obtida com os pontos de corte escolhidos
+p_treino = stats::predict(tree_IEGM, treino)
 c_treino = base::factor(ifelse(p_treino[,2]>.84, "Favoravel", "Desfavoravel"))
-p_teste = stats::predict(arvore, teste)
+p_teste = stats::predict(tree_IEGM, teste)
 c_teste = base::factor(ifelse(p_teste[,2]>.84, "Favoravel", "Desfavoravel"))
 
+#02-Generating the Confusion Matrix
+#02-Gerando a MAtriz de Confusão
 tab <- table(c_treino, treino$Parecer)
 tab
 tabtes <- table(c_teste, teste$Parecer)
 tabtes
 
+#03-Creating a dataset to compare the real and the predicted observations about "Approved" or "not Approved" instances - train sample
+#03-Criando uma base de dados para comparar as observações reais com as preditas quanto ao resultado "Favorável" e "Desafvorável" - amostra de treino
 aval_treino <- data.frame(obs=treino$Parecer, 
                           pred=c_treino,
                           Favoravel = p_treino[,2],
                           Desfavoravel = 1-p_treino[,2]
 )
+
+#04-Summaryzing the accuracy, sensitivivity and specificity - train sample
+#04-Exibindo-se os resultados da acurácia, a sensitividade e a especificidade - amostra de treino
 twoClassSummary(aval_treino, lev=levels(aval_treino$obs))
 
-# Podemos usar o mesmo dataframe para fazer a curva ROC:
+#05-Plotting the ROC Curve (plotRoc command) and exhibiting the area under curve (AUC) - train sample
+#05-Plotagem da curva ROC (comando plotRoc) e exibindo a área sob a curva (AUC) - amostra de treino
 CurvaROC <- ggplot2::ggplot(aval_treino, aes(d = as.numeric(factor(obs, levels = c("Favoravel", "Desfavoravel"))) - 1, m = Desfavoravel, colour='1')) + 
   plotROC::geom_roc(n.cuts = 0) +
   scale_color_viridis_d(direction = -1, begin=0, end=.25) +
@@ -252,23 +309,21 @@ CurvaROC <- ggplot2::ggplot(aval_treino, aes(d = as.numeric(factor(obs, levels =
 CurvaROC
 auctr <- pROC::roc(response = treino$Parecer, predictor=p_treino[,2]) 
 auctr
-############################################
-# Avaliar a árvore na base de teste
-# Vamos calcular a área da curva ROC com uma função no Caret
-# A função é o twoClassSummary, que espera como entrada um dataframe com esse layout:
-# obs: uma coluna contendo um fator com as classes observadas
-# pred: fator com as classes preditas
-# <classe 1> (Y no caso): contém a probabilidade da classe 1
-# <classe 2> (Y no caso): contém a probabilidade da classe 2
+
+#06-Creating a dataset to compare the real and the predicted observations about "Approved" or "not Approved" instances - test sample
+#06-Criando uma base de dados para comparar as observações reais com as preditas quanto ao resultado "Favorável" e "Desafvorável" - amostra de teste
 aval_teste <- data.frame(obs=teste$Parecer, 
                          pred=c_teste,
                          Favoravel = p_teste[,2],
                          Desfavoravel = 1-p_teste[,2]
 )
 
+#07-Summaryzing accuracy, sensitivivity and specificity - test sample
+#07-Exibindo-se os resultados da acurácia, a sensitividade e a especificidade - amostra de teste
 twoClassSummary(aval_teste, lev=levels(aval_teste$obs))
 
-# Podemos usar o mesmo dataframe para fazer a curva ROC:
+#08-Plotting the ROC Curve (plotRoc command) and exhibiting the area under curve (AUC) - test sample
+#08-Plotagem da curva ROC (comando plotRoc) e exibindo a área sob a curva (AUC) - amostra de teste
 CurvaROC <- ggplot(aval_teste, aes(d = as.numeric(factor(obs, levels = c("Favoravel", "Desfavoravel"))) - 1, m = Desfavoravel, colour='1')) + 
   plotROC::geom_roc(n.cuts = 0) +
   scale_color_viridis_d(direction = -1, begin=0, end=.25) +
