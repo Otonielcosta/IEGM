@@ -202,8 +202,8 @@ if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
 
 library('pROC')
 
-#02-Setting a tree withought any hyperparameters
-#02-Gerando uma árvore estabelecer hiperparâmetros
+#02-Setting a tree withought any hyperparameters (chosen xval equal to 5 randomly - crossvalidation)
+#02-Gerando uma árvore estabelecer hiperparâmetros (arbitrado valor igual a 5 para o crossvalidation)
 set.seed(123)
 tree_IEGM <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral,
                 data=iegm17a,
@@ -213,10 +213,10 @@ tree_IEGM <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + i
                 control = rpart.control(cp = 0.01, 
                                         minsplit = 5,
                                         minbucket = 10, 
-                                        maxdepth = 5)
+                                        maxdepth = 7)
 )
-#03-Exhibing the tree 
-#03-Exibindo a árvore
+#03-Exhibing the tree - Viridis Pallete for daltonian
+#03-Exibindo a árvore - Paleta viridis para pessoas com daltonismo
 tree_IEGM
 paleta = scales::viridis_pal(begin=.75, end=1)(20)
 rpart.plot::rpart.plot(tree_IEGM,
