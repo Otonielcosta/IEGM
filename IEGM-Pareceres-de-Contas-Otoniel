@@ -213,7 +213,7 @@ tree_IEGM <- rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + i
                 control = rpart.control(cp = 0.01, 
                                         minsplit = 5,
                                         minbucket = 10, 
-                                        maxdepth = 7)
+                                        maxdepth = 5)
 )
 #03-Exhibing the tree - Viridis Pallete for daltonian
 #03-Exibindo a árvore - Paleta viridis para pessoas com daltonismo
