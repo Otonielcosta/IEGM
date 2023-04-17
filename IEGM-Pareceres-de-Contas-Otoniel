@@ -1,5 +1,7 @@
 #Step 1 - Tuning hyperparameters - Searching for the best hyperparameters
+#If you want to go straight to Step 2, first run itens #01 (Loading packages) to #05 (setting the data in train and test)
 #Etapa 1  - Otimizar os hiperparâmetros - Procurando pelos melhores hiperparâmetros
+# Se você desejar ir à etapa 02 diretamente, primeiro execute os itens #01(carregar pacotes) até #05 (Estabelecendo as amostras de treino e teste) 
 
 #Source(Fonte): https://towardsdatascience.com/decision-tree-hyperparameter-tuning-in-r-using-mlr-3248bfd2d88c 
 #Author: Ivo Bernardo. Jun, 22th, 2022. 
@@ -177,7 +179,11 @@ hyperparam.plot
 
 ############################################################################################################################################ 
 #Step 2 - Generating the classification tree with the best hyperparameters tunned
+# Steps 2 and 3 are based on the model used in professor Msc. João Fernando Serrajordia Rocha Mello class "Other 
+# Machine Learning Models I Feb. 8th, 2022. File "OMML1_script02_overfitting_algorith_avaliation.R"
 #Etapa 2 - Gerar a árvore de classificação com os hiperparâmetros ótimos tunados. 
+# As etapas 2 e 3 são baseadas no modelos usado pelo prof. Msc. João Fernando Serrajordia Rocha Mello na aula
+# "Outros Modelos de Machine Learning 1 - em 08/FEV/2022 - Arquivo OMML1_script02_Algoritmo de avaliação overfitting.R". 
 
 #01-Carrying the packages
 #01-Carregando os pacotes
