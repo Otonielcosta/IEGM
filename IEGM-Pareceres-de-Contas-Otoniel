@@ -38,7 +38,7 @@ iegm17a <- iegm17a %>%
 class(iegm17a$iSaude)
 iegm17a %>% str
 
-#05-Setting the data in train and teste; 
+#05-Setting the data in train ("treino" in portuguese) and test ("teste" in portuguese); 
 #05-Estabelecendo a base de dados em treino e teste
 set.seed(123)
 bool_treino <- stats::runif(dim(iegm17a)[1])>.25
@@ -47,13 +47,13 @@ treino
 length(treino)
 teste  <- iegm17a[!bool_treino,]
 
-#06-Setting a tree withought any hyperparameters
-#06-Gerando uma árvore estabelecer hiperparâmetros
+#06-Setting a tree with the default hyperparameters
+#06-Gerando uma árvore com os hiperparâmetros padrão (ou default)
 d.tree = rpart(Parecer ~ iEduc + iSaude + iPlanejamento + iFiscal + iAmb + iCidade + iGovti + IEGeral, 
                data=treino, 
                method = 'class')
 
-#07-Predicting the results and Checking the accuracy of these predictions of the model 
+#07-Predicting the results and Checking the accuracy of these predictions of the model in the test set 
 #07-Prevendo-se os resultados e Verificando a acurácia das predições do modelo 
 predicted_values <- predict(d.tree, teste, type = 'class')
 accuracy(teste$Parecer, predicted_values)
@@ -68,11 +68,11 @@ d.tree.mlr <- mlr::makeClassifTask(data=as.data.frame(treino[,3:11]),
                                    target="Parecer"
 )
 
-#10-Search Parameter for Max Depth - defining the grid of values of maxdepth
+#10-Searching Parameter for Max Depth - defining the grid of values of maxdepth
 #10-Procurando parâmetros para o maxdeph - definindo o grid de valores do maxdepth
 param_grid <- makeParamSet(makeDiscreteParam("maxdepth", values=1:30))
 
-#11-Defining a grid, cross validation and measureament (accuracy)
+#11-Defining a grid, cross validation and measureament (accuracy) methods
 #11-Definindo o grid, o número de iterações no cross validation e a medida (acurácia)
 control_grid = makeTuneControlGrid()
 resample = makeResampleDesc("CV", iters = 3L)
@@ -338,4 +338,3 @@ CurvaROC <- ggplot(aval_teste, aes(d = as.numeric(factor(obs, levels = c("Favora
 CurvaROC
 auctes <- pROC::roc(response = teste$Parecer, predictor=p_teste[,2]) 
 auctes
-###################################################################################################################################
