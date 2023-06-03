@@ -1,0 +1,116 @@
+# Algoritmo baseado no script da aula Supervised Machine Learning: Modelos Logísticos Binários e Multinomiais II no dia 14/MAR/2023 
+# ministrada pelo Prof. Dr. Luiz Paulo Fávero
+
+#Pacotes utilizados
+pacotes <- c("plotly","tidyverse","knitr","kableExtra","fastDummies","rgl","car",
+             "reshape2","jtools","stargazer","lmtest","caret","pROC","ROCR","nnet",
+             "magick","cowplot","globals","equatiomatic")
+
+options(rgl.debug = TRUE)
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T) 
+} else {
+  sapply(pacotes, require, character = T) 
+}
+
+load("iegm17a.RData")
+iegm17a <- iegm17a %>% 
+  mutate(iEduc=as.factor(iEduc)) %>% 
+  mutate(iSaude=as.factor(iSaude)) %>% 
+  mutate(iPlanejamento=as.factor(iPlanejamento)) %>% 
+  mutate(iFiscal=as.factor(iFiscal)) %>% 
+  mutate(iAmb=as.factor(iAmb)) %>% 
+  mutate(iCidade=as.factor(iCidade)) %>% 
+  mutate(iGovti=as.factor(iGovti)) %>% 
+  mutate(IEGeral=as.factor(IEGeral)) %>% 
+  mutate(Parecer=as.factor(Parecer))
+
+##############################################################################
+# EXEMPLO 03 - ESTIMAÇÃO DE UM MODELO LOGÍSTICO BINÁRIO (linha 421 do script 02 
+#         - modelos logisticos e binarios da aula 02 do tema)#
+##############################################################################
+
+# gerar o modelo 
+modelo_iegm17a <- glm(formula = Parecer ~ . - Ordem - Municipio, 
+                      data = iegm17a, 
+                      family = "binomial")
+
+#Parâmetros do modelo
+summary(modelo_iegm17a)
+
+#############################################################################
+#Outro modo de apresentar os outputs do modelo_iegm17a
+summ(modelo_iegm17a, confint = T, digits = 3, ci.width = .95)
+export_summs(modelo_iegm17a, scale = F, digits = 6)
+#Procedimento Stepwise
+step_fidelidade <- step(object = modelo_iegm17a,
+                        k = qchisq(p = 0.05, df = 1, lower.tail = FALSE))
+
+#Note que sem a dummização, o R consegue calcular corretamente os parâmetros,
+#mas o procedimento Stepwise, quando aplicado, não surte efeitos! Isso porque 
+#existem variáveis não estatisticamente significantes. 
+#############################################################################
+#                    EXEMPLO 03 -  PROCEDIMENTO N-1 DUMMIES                  #
+##############################################################################
+#Dummizando as variáveis atendimento, sortimento, acessibilidade e preço. O 
+#código abaixo, automaticamente, fará: a) a dummização das variáveis originais;
+#b)removerá as variáveis dummizadas originais; c) estabelecerá como categorias 
+#de referência as categorias de label 1 de cada variável original.
+iegm17a_dummies <- dummy_columns(.data = iegm17a, 
+                                 select_columns = c("iEduc", 
+                                                    "iSaude",
+                                                    "iPlanejamento", 
+                                                    "iFiscal",
+                                                    "iAmb",
+                                                    "iCidade", 
+                                                    "iGovti", 
+                                                    "IEGeral"),
+                                 remove_selected_columns = T,
+                                 remove_first_dummy = T)
+##############################################################################
+#                      EXEMPLO 03 -  REESTIMANDO O MODELO                    #
+##############################################################################
+modelo_iegm17a_dummies <- glm(formula = Parecer ~ . - Ordem - Municipio, 
+                              data = iegm17a_dummies, 
+                              family = "binomial")
+
+#Parâmetros do modelo_iegm17a_dummies
+summary(modelo_iegm17a_dummies)
+
+#Valor do LL do modelo_iegm17a_dummies
+logLik(modelo_iegm17a_dummies)
+
+#Procedimento Stepwise
+step_iegm17a_dummies <- step(object = modelo_iegm17a_dummies, 
+                             k = qchisq(p = 0.05, df = 1, lower.tail = FALSE))
+
+#Parâmetros do modelo_iegm17a_dummies_stepwise
+summary(step_iegm17a_dummies)
+
+#Outro modo de apresentar os outputs do modelo
+summ(step_iegm17a_dummies, confint = T, digits = 3, ci.width = .95)
+export_summs(step_iegm17a_dummies, scale = F, digits = 6)
+
+#Valor do LL do modelo step_iegm17a_dummies
+logLik(step_iegm17a_dummies)
+logLik(modelo_iegm17a_dummies)
+
+#Comparando os modelos step_iegm17a_dummies e modelo_iegm17a_dummies
+#função lrtest do pacote lmtest
+lrtest(modelo_iegm17a_dummies, step_iegm17a_dummies)
+
+export_summs(modelo_iegm17a_dummies, step_iegm17a_dummies,
+             model.names = c("Modelo Dummies iegm17a","Modelo Dummies Stepwise iegm17a"),
+             scale = F, digits = 4)
+
+extract_eq(step_iegm17a_dummies, use_coefs = T,
+           wrap = T, show_distribution = T) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped",
+                full_width = F,
+                font_size = 25)
